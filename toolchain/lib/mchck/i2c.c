@@ -1,8 +1,5 @@
 #include <mchck.h>
 
-// Silence warnings about unused variables
-#define UNUSED __attribute__((unused))
-
 struct i2c_s {
         enum i2c_stop sendStop;
         i2c_cb *cb;
@@ -32,7 +29,7 @@ I2C0_Handler(void)
                                         I2C0.c1.rsta = 1;
                                 i2c.state = I2C_STATE_IDLE;
                                 if (i2c.cb) {
-                                        (*i2c.cb)(result, i2c.buffer, i2c.index, i2c.cbdata);
+                                        i2c.cb(result, i2c.buffer, i2c.index, i2c.cbdata);
                                 }
                         } else {
                                 I2C0.d = i2c.buffer[i2c.index++];
@@ -46,7 +43,7 @@ I2C0_Handler(void)
                                 I2C0.c1.rsta = 1;
                         i2c.state = I2C_STATE_IDLE;
                         if (i2c.cb) {
-                                (*i2c.cb)(result, i2c.buffer, i2c.index, i2c.cbdata);
+                                i2c.cb(result, i2c.buffer, i2c.index, i2c.cbdata);
                         }
                 }
                 break;
@@ -58,13 +55,13 @@ I2C0_Handler(void)
                                 I2C0.c1.rsta = 1;
                         i2c.state = I2C_STATE_IDLE;
                         if (i2c.cb) {
-                                (*i2c.cb)(result, i2c.buffer, i2c.index, i2c.cbdata);
+                                i2c.cb(result, i2c.buffer, i2c.index, i2c.cbdata);
                         }
                 } else {
                         I2C0.c1.tx = 0;
                         i2c.state = I2C_STATE_RX;
                         // Throw away the first byte read from the device.
-                        UNUSED volatile uint8_t dummy = I2C0.d;
+                        (void)I2C0.d;
                 }
                 break;
         case I2C_STATE_RX:
@@ -79,7 +76,7 @@ I2C0_Handler(void)
                 }
                 i2c.buffer[i2c.index++] = I2C0.d;
                 if (i2c.index == i2c.length && i2c.cb) {
-                        (*i2c.cb)(result, i2c.buffer, i2c.length, i2c.cbdata);
+                        i2c.cb(result, i2c.buffer, i2c.length, i2c.cbdata);
                 }
                 break;
         }
