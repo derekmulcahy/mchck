@@ -1,4 +1,4 @@
-_libdir:=       $(dir $(lastword ${MAKEFILE_LIST}))
+_libdir:=       $(abspath $(dir $(lastword ${MAKEFILE_LIST})))
 
 -include .mchckrc
 -include ${_libdir}/../.mchckrc
@@ -21,7 +21,7 @@ CLEANFILES+=	$${_objs-$(1)}
 _deps-$(1)=	$$(addsuffix .d, $$(basename $$(addprefix $(1)-lib-,$${SRCS-$(1)} $${SRCS.force-$(1)})))
 DEPS+=	$${_deps-$(1)}
 
-$(1)-lib-%.o: $${_libdir-$(1)}/%.c
+$${LIBDEPCACHE}/$(1)-lib-%.o $(1)-lib-%.o: $${_libdir-$(1)}/%.c
 	$$(COMPILE.c) $$(OUTPUT_OPTION) $$<
 $(1)-lib-%.d: $${_libdir-$(1)}/%.c
 	$$(GENERATE.d)
@@ -55,6 +55,11 @@ OBJS+=	${_objs}
 _allobjs+=	${OBJS}
 DEPS+=	$(addsuffix .d, $(basename ${_compilesrc} ${_gensrc}))
 CLEANFILES+=	${DEPS}
+
+
+# This should be in linkdep.mk, but it is needed before, in the
+# expansion of _include_libs.
+LIBDEPCACHE=	${_libdir}/cache
 
 
 # Host config (VUSB)
@@ -163,14 +168,17 @@ ${LDTEMPLATE}: ${_libdir}/ld/link.ld.S ${LDSCRIPTS}
 	${CPP} -o $@ ${CPPFLAGS.ld} $<
 CLEANFILES+=	${LDTEMPLATE} ${PROG}.ld
 
-gdb: ${PROG}.elf
+gdb: check-programmer ${PROG}.elf
 	${RUBY} ${_libdir}/../programmer/gdbserver.rb ${MCHCKADAPTER} -- ${GDB} -readnow -ex 'target extended-remote :1234' ${PROG}.elf
 
 flash: ${PROG}.bin
 	${DFUUTIL} -d ${DFUVID}:${DFUPID} -D ${PROG}.bin
 
-swd-flash: ${PROG}.bin
-	${RUBY} ${_libdir}/../programmer/flash.rb ${MCHCKADAPTER} $< ${LOADADDR}
+swd-flash: check-programmer ${PROG}.bin
+	${RUBY} ${_libdir}/../programmer/flash.rb ${MCHCKADAPTER} ${PROG}.bin ${LOADADDR}
+
+check-programmer:
+	cd ${_libdir}/.. && git submodule update --init programmer
 endif
 
 # from the make info manual
